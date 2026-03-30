@@ -3,7 +3,10 @@ package com.erick.afiliados.controller;
 import com.erick.afiliados.service.MessageService;
 import com.erick.afiliados.service.MetricsService;
 import com.erick.afiliados.service.TelegramService;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/telegram")
@@ -21,21 +24,44 @@ public class TelegramController {
         this.metricsService = metricsService;
     }
 
+    @GetMapping("/test")
+    public String test() {
+        String msg = """
+🔥 OFERTA TOP NA AMAZON
+
+🚴 Bicicleta Aro 29 Rino
+💪 Freio a disco + carbono
+
+💸 De: R$ 1.199
+🔥 Por: R$ 799
+
+🚨 Aproveita antes que acabe!
+
+👉 Compre aqui:
+https://amzn.to/4tm8AKI
+""";
+
+        telegramService.sendMessage(msg);
+        return "Mensagem enviada!";
+    }
+
     @GetMapping("/send/product/{id}")
     public String sendProductMessage(@PathVariable Long id) {
-        var messageResponse = messageService.generateMessage(id);
+        var message = messageService.generateMessage(id);
 
-        if (messageResponse == null) {
+        if (message == null) {
             return "Produto não encontrado";
         }
 
         String imageUrl = messageService.getProductImage(id);
 
         if (imageUrl == null || imageUrl.isBlank()) {
-            return telegramService.sendMessage(messageResponse.message());
+            telegramService.sendMessage(message.message());
+        } else {
+            telegramService.sendPhoto(imageUrl, message.message());
         }
 
-        return telegramService.sendPhoto(imageUrl, messageResponse.message());
+        return "Produto enviado com sucesso!";
     }
 
     @GetMapping("/send/all")
@@ -45,6 +71,8 @@ public class TelegramController {
         if (products.isEmpty()) {
             return "Nenhum produto ativo encontrado";
         }
+
+        int enviados = 0;
 
         for (var product : products) {
             var message = messageService.generateMessage(product.getId());
@@ -57,16 +85,12 @@ public class TelegramController {
                 } else {
                     telegramService.sendPhoto(imageUrl, message.message());
                 }
-            }
 
-            try {
-                Thread.sleep(3000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                enviados++;
             }
         }
 
-        return "Mensagens enviadas com sucesso";
+        return enviados + " produto(s) enviado(s) com sucesso!";
     }
 
     @GetMapping("/send/top")
@@ -86,9 +110,11 @@ public class TelegramController {
         String imageUrl = messageService.getProductImage(topProduct.getProductId());
 
         if (imageUrl == null || imageUrl.isBlank()) {
-            return telegramService.sendMessage(messageResponse.message());
+            telegramService.sendMessage(messageResponse.message());
+        } else {
+            telegramService.sendPhoto(imageUrl, messageResponse.message());
         }
 
-        return telegramService.sendPhoto(imageUrl, messageResponse.message());
+        return "Top produto enviado com sucesso!";
     }
 }
